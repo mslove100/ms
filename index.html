@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>용돈 기록장</title>
+
+    <!-- ===== PWA 설정 (휴대폰 설치용) ===== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0F172A">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <!-- 아이폰용 -->
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="용돈기록">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F1F5F9;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-jua {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #E2E8F0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94A3B8;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center min-h-screen p-2 sm:p-4 text-gray-800 select-none">
+
+    <!-- Mobile Screen Frame Container -->
+    <div class="w-full max-w-md h-[95vh] max-h-[880px] bg-white rounded-xl shadow-sm flex flex-col overflow-hidden border border-slate-200 relative">
+        
+        <!-- Header -->
+        <header class="bg-slate-900 py-3 px-4 flex justify-between items-center shrink-0">
+            <h1 class="font-jua text-xl text-white tracking-tight">용돈 기록장</h1>
+            <button onclick="confirmResetAllData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-jua text-xs px-2.5 py-1.5 rounded-md transition-all border border-slate-600 active:scale-95">
+                초기화
+            </button>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex bg-slate-100 border-b border-slate-200 shrink-0">
+            <button onclick="switchTab('tab-ledger')" id="btn-tab-ledger" class="tab-btn flex-1 py-3 text-center font-jua text-sm sm:text-base text-slate-900 border-b-2 border-blue-600 bg-white transition-all">
+                용돈기록
+            </button>
+            <button onclick="switchTab('tab-sticker')" id="btn-tab-sticker" class="tab-btn flex-1 py-3 text-center font-jua text-sm sm:text-base text-gray-400 border-b-2 border-transparent hover:text-blue-600 transition-all">
+                포인트
+            </button>
+            <button onclick="switchTab('tab-weekly')" id="btn-tab-weekly" class="tab-btn flex-1 py-3 text-center font-jua text-sm sm:text-base text-gray-400 border-b-2 border-transparent hover:text-blue-600 transition-all">
+                주간 미션
+            </button>
+        </nav>
+
+        <!-- Scrollable Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-4 bg-slate-100 space-y-4">
+
+            <!-- Year/Month Navigation Header Bar -->
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex justify-between items-center">
+                <button onclick="changeMonth(-1)" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-jua text-sm rounded-md transition-all">
+                    ◀ 이전달
+                </button>
+                <span id="currentYearMonthDisplay" class="font-jua text-lg text-slate-900">2026년 11월</span>
+                <button onclick="changeMonth(1)" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-jua text-sm rounded-md transition-all">
+                    다음달 ▶
+                </button>
+            </div>
+
+            <!-- ================= TAB 1: 용돈기록 ================= -->
+            <section id="tab-ledger" class="tab-page space-y-4">
+                
+                <!-- Balance Box -->
+                <div class="bg-white p-4 rounded-lg text-left border border-slate-200">
+                    <span class="text-xs font-medium text-slate-500">이번 달 잔액</span>
+                    <div id="totalBalance" class="font-jua text-3xl text-slate-900 mt-1 tracking-tight">0원</div>
+                </div>
+
+                <!-- Transaction Input Form -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <h2 id="formTitle" class="font-jua text-base text-slate-900 flex items-center justify-between">
+                        <span>용돈 수입 / 지출 입력</span>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden text-xs text-red-500 font-bold underline">수정 취소</button>
+                    </h2>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <select id="transType" class="col-span-1 p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs sm:text-sm bg-white">
+                            <option value="income">수입</option>
+                            <option value="expense">지출</option>
+                        </select>
+                        <input type="text" id="transName" placeholder="내용 (예: 떡볶이)" class="col-span-2 p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs sm:text-sm">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <!-- 달력 선택 기능은 유지하면서 겉에는 '월-일'만 예쁘게 표출 -->
+                        <div class="col-span-1 relative">
+                            <button type="button" onclick="openDatePicker()" class="w-full p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs sm:text-sm bg-white text-gray-700 flex items-center justify-between">
+                                <span id="transDateDisplay" class="font-bold text-slate-900">11-03</span>
+                                
+                            </button>
+                            <input type="date" id="transDate" onchange="formatDateDisplay(this)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
+                        </div>
+                        <input type="number" id="transAmount" placeholder="금액 (원)" class="col-span-2 p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs sm:text-sm">
+                    </div>
+
+                    <button id="saveTransBtn" onclick="addTransaction()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-jua text-base rounded-md shadow-sm transition-all">
+                        기록 추가하기
+                    </button>
+                </div>
+
+                <!-- Transaction Table Header & List -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-jua text-base text-slate-900">내역 리스트</h2>
+                        <span class="text-[10px] text-gray-400 font-medium">* 최근 내역 순</span>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-md border border-slate-200">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 font-jua text-slate-900 text-center border-b border-slate-200">
+                                    <th class="py-2 px-1 w-[18%]">날짜</th>
+                                    <th class="py-2 px-1 w-[12%]">구분</th>
+                                    <th class="py-2 px-1 w-[22%]">내용</th>
+                                    <th class="py-2 px-1 w-[18%]">금액</th>
+                                    <th class="py-2 px-1 w-[18%]">잔액</th>
+                                    <th class="py-2 px-1 w-[12%]">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transTableBody" class="divide-y divide-slate-100 text-center font-medium">
+                                <!-- Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Backup & Restore Section -->
+                <div class="bg-white p-3.5 rounded-lg shadow-sm border border-slate-200 space-y-2">
+                    <h2 class="font-jua text-xs text-gray-600">데이터 백업 & 불러오기</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="downloadBackup()" class="py-2 bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-jua text-xs rounded-md shadow-sm transition-all">
+                            백업파일 저장
+                        </button>
+                        <input type="file" id="backupFileInput" class="hidden" accept=".json" onchange="importBackup(event)">
+                        <button onclick="document.getElementById('backupFileInput').click()" class="py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-jua text-xs rounded-md shadow-sm transition-all">
+                            불러오기 (복원)
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- ================= TAB 2: 포인트 ================= -->
+            <section id="tab-sticker" class="tab-page hidden space-y-4">
+                
+                <!-- Sticker Board -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 text-center space-y-3">
+                    <h2 class="font-jua text-base text-slate-900">칭찬 포인트 (10개 목표)</h2>
+                    
+                    <div class="flex justify-center items-center gap-4 text-xs bg-slate-50 py-2 px-3 rounded-md border border-slate-200 font-bold">
+                        <div>오늘 받은 포인트: <span id="todayStickerCount" class="text-blue-600 text-sm font-jua">0개</span></div>
+                        <div class="text-gray-300">|</div>
+                        <div>전체 포인트: <span id="totalStickerCount" class="text-blue-600 text-sm font-jua">0개</span> / 10개</div>
+                    </div>
+
+                    <div id="stickerBoard" class="grid grid-cols-5 gap-2 pt-1">
+                        <!-- Dynamic Slots -->
+                    </div>
+                    
+                    <button onclick="resetStickers()" class="text-xs text-gray-400 underline font-medium hover:text-blue-600 pt-1">
+                        포인트 리셋
+                    </button>
+                </div>
+
+                <!-- Parent Mission List -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-jua text-base text-slate-900">부모님 칭찬 미션 목록</h2>
+                        <span class="text-[10px] text-blue-600 font-medium">성공 시 포인트 지급</span>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="newMissionInput" placeholder="새 미션 (예: 강아지 산책시키기)" class="flex-1 p-2 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs">
+                        <button onclick="addMission()" class="px-3 bg-blue-600 hover:bg-blue-700 text-white font-jua text-xs rounded-md shrink-0 transition-all">
+                            추가
+                        </button>
+                    </div>
+
+                    <div id="missionList" class="space-y-2 pt-1">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+
+                <!-- Reward Coupon Setting -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <h2 class="font-jua text-sm text-gray-700">포인트 10개 보상 쿠폰 설정</h2>
+                    <input type="text" id="couponSettingText" placeholder="보상 내용 (예: 원하는 선물 사주기)" class="w-full p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs">
+                    <button onclick="saveCouponText()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-jua text-xs rounded-md shadow-sm transition-all">
+                        보상 내용 저장하기
+                    </button>
+
+                    <div id="couponCardContainer" class="pt-2 hidden">
+                        <div class="relative bg-slate-50 border border-dashed border-slate-300 rounded-lg p-3 text-center space-y-2">
+                            <span class="text-[10px] font-bold text-slate-500 tracking-widest">REWARD COUPON</span>
+                            <div id="displayCouponText" class="font-jua text-lg text-slate-900 py-1">
+                                <!-- Dynamic content -->
+                            </div>
+                            <button type="button" onclick="useCoupon(event)" class="w-full py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-jua text-xs rounded-md shadow transition-all flex items-center justify-center gap-1">
+                                쿠폰 사용하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- ================= TAB 3: 주간 미션 ================= -->
+            <section id="tab-weekly" class="tab-page hidden space-y-4">
+
+                <!-- ===== 요일별 할 일 (학원숙제·과제) ===== -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-jua text-base text-slate-900">요일별 과제 등록</h2>
+                        <span class="text-[10px] text-gray-400 font-medium">등록하면 모든 주차 카드에 들어가요</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="dayTaskDay" class="p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs bg-white">
+                            <option value="mon">월요일</option>
+                            <option value="tue">화요일</option>
+                            <option value="wed">수요일</option>
+                            <option value="thu">목요일</option>
+                            <option value="fri">금요일</option>
+                            <option value="sat">토요일</option>
+                            <option value="sun">일요일</option>
+                        </select>
+                        <select id="dayTaskType" class="p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs bg-white">
+                            <option value="학원숙제">학원숙제</option>
+                            <option value="과제">과제</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="dayTaskText" placeholder="내용 (예: 수학학원 워크북 3장)" class="flex-1 p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs"
+                               onkeydown="if(event.key==='Enter') addDayTask()">
+                        <button onclick="addDayTask()" class="px-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-jua text-xs rounded-md shrink-0 transition-all">
+                            추가
+                        </button>
+                    </div>
+
+                    <div id="dayTaskList" class="space-y-3 pt-1">
+                        <!-- Dynamic Day Tasks -->
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-jua text-base text-slate-900 whitespace-nowrap">월~금 학습 미션</h2>
+                        <div class="flex gap-1.5 shrink-0">
+                            <button onclick="toggleCustomSubjectModal()" class="whitespace-nowrap px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-jua text-xs rounded-md shadow-sm transition-all">
+                                과목 추가
+                            </button>
+                            <button onclick="addWeeklyCard()" class="whitespace-nowrap px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-jua text-xs rounded-md shadow-sm transition-all">
+                                + 주차 추가
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500">주차별로 등록된 학습 미션을 완료하면 눌러서 체크해 주세요!</p>
+                </div>
+
+                <!-- Subject Management Box (Toggleable) -->
+                <div id="subjectManageBox" class="hidden bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-3">
+                    <h3 class="font-jua text-sm text-slate-900">나의 학습 미션 과목 관리</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newSubjectInput" placeholder="추가할 미션 (예: 영어 단어 10개, 독서 30분)" class="flex-1 p-2 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs">
+                        <button onclick="addCustomSubject()" class="px-3 bg-blue-700 hover:bg-blue-700 text-white font-jua text-xs rounded-md shrink-0">
+                            추가
+                        </button>
+                    </div>
+                    <div id="subjectListContainer" class="flex flex-wrap gap-1.5 pt-1">
+                        <!-- Dynamic Subject Badges -->
+                    </div>
+                </div>
+
+                <div id="weeklyMissionListContainer" class="space-y-4">
+                    <!-- Dynamic Weekly Cards -->
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Custom Modal -->
+        <div id="modalOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-xs rounded-xl p-5 text-center shadow-lg border border-slate-200 space-y-3">
+                <div id="modalIcon" class="hidden"></div>
+                <h3 id="modalTitle" class="font-jua text-xl text-slate-900">알림</h3>
+                <div id="modalBody" class="text-xs font-medium text-gray-600 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <!-- Content -->
+                </div>
+                <div id="modalCustomInputArea" class="hidden">
+                    <input type="text" id="modalInputText" class="w-full p-2.5 border border-slate-200 rounded-md font-medium focus:outline-none focus:border-blue-500 text-xs">
+                </div>
+                <div id="modalButtonArea" class="flex gap-2">
+                    <button onclick="closeModal()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-jua text-base rounded-md shadow-sm transition-all">
+                        확인
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const now = new Date();
+        let currentYear = now.getFullYear();
+        let currentMonth = now.getMonth() + 1;
+
+        let editingTransId = null;
+
+        let appData = {
+            transactions: [],
+            stickers: 0,
+            todayStickers: 0,
+            lastDate: new Date().toDateString(),
+            couponText: '맛있는 치킨 1마리 쿠폰!',
+            isCouponActive: false,
+            missions: [
+                { id: 1, name: '설거지 도와주기' },
+                { id: 2, name: '신발 정돈하기' },
+                { id: 3, name: '내 방 깔끔하게 청소하기' }
+            ],
+            weeklySubjects: [
+                { id: 'math', name: '수학 3장' },
+                { id: 'kor', name: '국어 3장' }
+            ],
+            weeklyMissions: {}
+        };
+
+        function getYearMonthKey(y, m) {
+            return `${y}-${m < 10 ? '0' + m : m}`;
+        }
+
+        function populateDaySelector() {
+            const dateInput = document.getElementById('transDate');
+            if (!dateInput) return;
+            
+            // 현재 선택된 연-월에 맞게 date input 기본값 설정
+            const monthStr = currentMonth < 10 ? '0' + currentMonth : currentMonth;
+            const today = new Date();
+            let dayStr = '01';
+            
+            if (today.getFullYear() === currentYear && (today.getMonth() + 1) === currentMonth) {
+                const todayNum = today.getDate();
+                dayStr = todayNum < 10 ? '0' + todayNum : todayNum;
+            }
+            
+            dateInput.value = `${currentYear}-${monthStr}-${dayStr}`;
+            formatDateDisplay(dateInput);
+        }
+
+        function openDatePicker() {
+            const dateInput = document.getElementById('transDate');
+            if (dateInput) {
+                try {
+                    dateInput.focus();
+                    dateInput.click();
+                } catch (e) {
+                    console.log('Date click fallback', e);
+                }
+            }
+        }
+
+        // 입력 폼 내의 연도를 제외하고 "MM-DD" 형태로 표출
+        function formatDateDisplay(input) {
+            if (!input || !input.value) return;
+            const parts = input.value.split('-');
+            if (parts.length === 3) {
+                const displayElem = document.getElementById('transDateDisplay');
+                if (displayElem) {
+                    displayElem.innerText = `${parts[1]}-${parts[2]}`;
+                }
+            }
+        }
+
+        function loadData() {
+            let saved = null;
+            try {
+                saved = localStorage.getItem('pocketMoneyTeenDataV1');
+            } catch (e) {
+                console.error('Data load error', e);
+            }
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Data parse error', e);
+                }
+            }
+
+            if (!appData.weeklySubjects) {
+                appData.weeklySubjects = [
+                    { id: 'math', name: '수학 3장' },
+                    { id: 'kor', name: '국어 3장' }
+                ];
+            }
+
+            const currentDate = new Date().toDateString();
+            if (appData.lastDate !== currentDate) {
+                appData.todayStickers = 0;
+                appData.lastDate = currentDate;
+            }
+
+            ensureMonthlyCarryover(currentYear, currentMonth);
+            saveData();
+            renderAll();
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('pocketMoneyTeenDataV1', JSON.stringify(appData));
+            } catch (e) {
+                console.error('Data save error', e);
+                alert('저장에 실패했어요 휴대폰 저장공간을 확인해 주세요.');
+            }
+        }
+
+        function ensureMonthlyCarryover(year, month) {
+            const ymKey = getYearMonthKey(year, month);
+            const hasMonthData = appData.transactions.some(t => t.yearMonth === ymKey);
+            if (!hasMonthData) {
+                let prevYear = month === 1 ? year - 1 : year;
+                let prevMonth = month === 1 ? 12 : month - 1;
+                const prevYmKey = getYearMonthKey(prevYear, prevMonth);
+
+                const prevTransactions = appData.transactions.filter(t => t.yearMonth === prevYmKey);
+                if (prevTransactions.length > 0) {
+                    let prevBalance = 0;
+                    prevTransactions.forEach(t => {
+                        if (t.type === 'income') prevBalance += t.amount;
+                        else prevBalance -= t.amount;
+                    });
+
+                    if (prevBalance > 0) {
+                        const carryoverDate = `${year}-${month < 10 ? '0' + month : month}-01`;
+                        appData.transactions.push({
+                            id: Date.now(),
+                            type: 'income',
+                            name: '전월 잔액 이월',
+                            amount: prevBalance,
+                            date: carryoverDate,
+                            yearMonth: ymKey
+                        });
+                    }
+                }
+            }
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            } else if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+
+            ensureMonthlyCarryover(currentYear, currentMonth);
+            saveData();
+            renderAll();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-page').forEach(page => page.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-slate-900', 'border-blue-600', 'bg-white');
+                btn.classList.add('text-gray-400', 'border-transparent');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-400', 'border-transparent');
+                activeBtn.classList.add('text-slate-900', 'border-blue-600', 'bg-white');
+            }
+        }
+
+        function showCustomModal(title, message, icon = '') {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalBody').innerHTML = message;
+            document.getElementById('modalBody').classList.remove('hidden');
+            document.getElementById('modalIcon').innerText = icon;
+            document.getElementById('modalCustomInputArea').classList.add('hidden');
+            document.getElementById('modalButtonArea').innerHTML = `
+                <button onclick="closeModal()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-jua text-base rounded-md shadow-sm transition-all">
+                    확인
+                </button>
+            `;
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+        // ================= 1. 용돈기록 =================
+        function addTransaction() {
+            const type = document.getElementById('transType').value;
+            const name = document.getElementById('transName').value.trim();
+            const amount = Number(document.getElementById('transAmount').value);
+            const dateVal = document.getElementById('transDate').value;
+            
+            if (!dateVal) {
+                showCustomModal('입력 확인', '날짜를 선택해 주세요!');
+                return;
+            }
+
+            const parts = dateVal.split('-');
+            const txYearMonth = `${parts[0]}-${parts[1]}`;
+
+            if (!name || isNaN(amount) || amount <= 0) {
+                showCustomModal('입력 확인', '내용과 금액을 올바르게 입력해 주세요!');
+                return;
+            }
+
+            if (editingTransId) {
+                const tx = appData.transactions.find(t => t.id === editingTransId);
+                if (tx) {
+                    tx.type = type;
+                    tx.name = name;
+                    tx.amount = amount;
+                    tx.date = dateVal;
+                    tx.yearMonth = txYearMonth;
+                }
+                editingTransId = null;
+                document.getElementById('formTitle').children[0].innerText = '용돈 수입 / 지출 입력';
+                document.getElementById('saveTransBtn').innerText = '기록 추가하기';
+                document.getElementById('cancelEditBtn').classList.add('hidden');
+            } else {
+                appData.transactions.push({
+                    id: Date.now(),
+                    type,
+                    name,
+                    amount,
+                    date: dateVal,
+                    yearMonth: txYearMonth
+                });
+            }
+
+            document.getElementById('transName').value = '';
+            document.getElementById('transAmount').value = '';
+
+            saveData();
+            renderAll();
+        }
+
+        function editTransaction(id) {
+            const tx = appData.transactions.find(t => t.id === id);
+            if (!tx) return;
+
+            editingTransId = id;
+            document.getElementById('transType').value = tx.type;
+            document.getElementById('transName').value = tx.name;
+            document.getElementById('transAmount').value = tx.amount;
+            if (tx.date) {
+                const dateInput = document.getElementById('transDate');
+                dateInput.value = tx.date;
+                formatDateDisplay(dateInput);
+            }
+
+            document.getElementById('formTitle').children[0].innerText = '용돈 내역 수정하기';
+            document.getElementById('saveTransBtn').innerText = '수정 완료하기';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+        }
+
+        function cancelEdit() {
+            editingTransId = null;
+            document.getElementById('transName').value = '';
+            document.getElementById('transAmount').value = '';
+            document.getElementById('formTitle').children[0].innerText = '용돈 수입 / 지출 입력';
+            document.getElementById('saveTransBtn').innerText = '기록 추가하기';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('이 용돈 내역을 삭제할까요?')) {
+                appData.transactions = appData.transactions.filter(t => t.id !== id);
+                saveData();
+                renderAll();
+            }
+        }
+
+        // ================= 2. 포인트 =================
+        function awardSticker(missionName) {
+            if (appData.stickers >= 10) {
+                showCustomModal('쿠폰 발급 완료', '이미 포인트 10개를 모두 모았습니다!');
+                return;
+            }
+
+            appData.stickers++;
+            appData.todayStickers++;
+
+            if (appData.stickers === 10) {
+                appData.isCouponActive = true;
+                showCustomModal('포인트 10개 완주!', `미션 [${missionName}] 성공!<br><br><strong class="text-slate-900 text-sm">보상 쿠폰이 발급되었습니다!</strong>`, '');
+            } else {
+                showCustomModal('칭찬 포인트 획득!', `[${missionName}] 미션을 완수하여 포인트를 지급했습니다!`, '');
+            }
+
+            saveData();
+            renderAll();
+        }
+
+        function resetStickers() {
+            if (confirm('포인트를 리셋하시겠습니까?')) {
+                appData.stickers = 0;
+                appData.todayStickers = 0;
+                saveData();
+                renderAll();
+            }
+        }
+
+        function addMission() {
+            const input = document.getElementById('newMissionInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            appData.missions.push({ id: Date.now(), name });
+            input.value = '';
+            saveData();
+            renderMissions();
+        }
+
+        function deleteMission(id) {
+            appData.missions = appData.missions.filter(m => m.id !== id);
+            saveData();
+            renderMissions();
+        }
+
+        let editingMissionId = null;
+
+        function editMission(id) {
+            const targetId = Number(id);
+            const mission = appData.missions.find(m => m.id === targetId);
+            if (!mission) return;
+
+            editingMissionId = targetId;
+            document.getElementById('modalTitle').innerText = '미션 내용 수정';
+            document.getElementById('modalIcon').innerText = '';
+            document.getElementById('modalBody').innerText = '새로운 미션 이름을 입력해 주세요!';
+            document.getElementById('modalBody').classList.remove('hidden');
+            
+            const inputArea = document.getElementById('modalCustomInputArea');
+            const inputField = document.getElementById('modalInputText');
+            inputArea.classList.remove('hidden');
+            inputField.value = mission.name;
+
+            document.getElementById('modalButtonArea').innerHTML = `
+                <button onclick="closeModal()" class="flex-1 py-2 bg-gray-300 text-gray-700 font-jua text-sm rounded-md">취소</button>
+                <button onclick="saveEditedMission()" class="flex-1 py-2 bg-blue-600 text-white font-jua text-sm rounded-md">저장</button>
+            `;
+
+            document.getElementById('modalOverlay').classList.remove('hidden');
+            setTimeout(() => inputField.focus(), 100);
+        }
+
+        function saveEditedMission() {
+            if (!editingMissionId) return;
+            const newName = document.getElementById('modalInputText').value.trim();
+            if (!newName) {
+                alert('미션 내용을 입력해 주세요!');
+                return;
+            }
+
+            const mission = appData.missions.find(m => m.id === editingMissionId);
+            if (mission) {
+                mission.name = newName;
+                saveData();
+                renderMissions();
+            }
+
+            editingMissionId = null;
+            closeModal();
+        }
+
+        function saveCouponText() {
+            const text = document.getElementById('couponSettingText').value.trim();
+            if (!text) {
+                showCustomModal('내용 필요', '보상 내용을 작성해 주세요.');
+                return;
+            }
+            appData.couponText = text;
+            appData.isCouponActive = true;
+            saveData();
+            renderStickers();
+            showCustomModal('보상 설정 저장', '보상 쿠폰 내용이 등록되었습니다!');
+        }
+
+        function useCoupon(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            document.getElementById('modalTitle').innerText = '쿠폰 사용 확인';
+            document.getElementById('modalIcon').innerText = '';
+            document.getElementById('modalBody').innerHTML = '보상 쿠폰을 지금 사용하시겠습니까?<br><span class="text-red-500 text-xs font-bold">(사용 후에는 쿠폰이 목록에서 사라집니다)</span>';
+            document.getElementById('modalBody').classList.remove('hidden');
+            document.getElementById('modalCustomInputArea').classList.add('hidden');
+
+            document.getElementById('modalButtonArea').innerHTML = `
+                <button onclick="closeModal()" class="flex-1 py-2.5 bg-gray-300 text-gray-700 font-jua text-sm rounded-md">취소</button>
+                <button onclick="confirmUseCoupon()" class="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-jua text-sm rounded-md shadow-sm transition-all">사용하기</button>
+            `;
+
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function confirmUseCoupon() {
+            appData.isCouponActive = false;
+            saveData();
+            renderStickers();
+            closeModal();
+            setTimeout(() => {
+                showCustomModal('쿠폰 사용 완료!', '보상 쿠폰을 성공적으로 사용했습니다!', '');
+            }, 100);
+        }
+
+        // ================= 3. 주간 미션 =================
+        function toggleCustomSubjectModal() {
+            const box = document.getElementById('subjectManageBox');
+            box.classList.toggle('hidden');
+        }
+
+        function addCustomSubject() {
+            const input = document.getElementById('newSubjectInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const subId = 'sub_' + Date.now();
+            appData.weeklySubjects.push({ id: subId, name });
+            input.value = '';
+            saveData();
+            renderWeeklyMissions();
+        }
+
+        function deleteCustomSubject(event, subId) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            const targetIdStr = String(subId);
+            appData.weeklySubjects = (appData.weeklySubjects || []).filter(s => String(s.id) !== targetIdStr);
+            
+            // 주차 카드 데이터에서도 해당 과목 삭제
+            for (let ymKey in appData.weeklyMissions) {
+                if (Array.isArray(appData.weeklyMissions[ymKey])) {
+                    appData.weeklyMissions[ymKey].forEach(card => {
+                        if (card.days) {
+                            ['mon', 'tue', 'wed', 'thu', 'fri'].forEach(d => {
+                                if (card.days[d] && card.days[d][targetIdStr]) {
+                                    delete card.days[d][targetIdStr];
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+
+            saveData();
+            renderWeeklyMissions();
+        }
+
+        function addWeeklyCard() {
+            const ymKey = getYearMonthKey(currentYear, currentMonth);
+            if (!appData.weeklyMissions) appData.weeklyMissions = {};
+            if (!appData.weeklyMissions[ymKey]) appData.weeklyMissions[ymKey] = [];
+
+            const weekNum = appData.weeklyMissions[ymKey].length + 1;
+            appData.weeklyMissions[ymKey].push({
+                id: Date.now(),
+                weekTitle: `${weekNum}주차`,
+                days: {
+                    mon: {},
+                    tue: {},
+                    wed: {},
+                    thu: {},
+                    fri: {}
+                }
+            });
+
+            saveData();
+            renderWeeklyMissions();
+        }
+
+        function toggleWeeklyTask(cardId, dayKey, subId) {
+            // Unused in new direct input UI
+        }
+
+        function updateWeeklyPageInput(cardId, dayKey, subId, inputVal) {
+            const ymKey = getYearMonthKey(currentYear, currentMonth);
+            const cardList = appData.weeklyMissions[ymKey] || [];
+            const card = cardList.find(c => String(c.id) === String(cardId));
+            if (card && card.days && card.days[dayKey]) {
+                const trimmed = inputVal.trim();
+                card.days[dayKey][subId] = {
+                    done: trimmed.length > 0,
+                    pages: trimmed
+                };
+                saveData();
+                // 렌더링 유지하며 배지만 업뎃하기 위해 부분 렌더링
+                renderWeeklyMissions();
+            }
+        }
+
+        function deleteWeeklyCard(event, cardId) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (confirm('이 주차 미션 카드를 삭제할까요?')) {
+                const ymKey = getYearMonthKey(currentYear, currentMonth);
+                if (appData.weeklyMissions && appData.weeklyMissions[ymKey]) {
+                    const targetCardIdStr = String(cardId);
+                    appData.weeklyMissions[ymKey] = appData.weeklyMissions[ymKey].filter(c => String(c.id) !== targetCardIdStr);
+                    saveData();
+                    renderWeeklyMissions();
+                }
+            }
+        }
+
+        // 전체 초기화
+        function confirmResetAllData() {
+            document.getElementById('modalTitle').innerText = '전체 초기화';
+            document.getElementById('modalIcon').innerText = '';
+            document.getElementById('modalBody').innerHTML = '모든 용돈 내역, 포인트, 미션 기록이 완전히 삭제됩니다.<br><strong class="text-red-600 text-xs">정말로 초기화하시겠습니까?</strong>';
+            document.getElementById('modalBody').classList.remove('hidden');
+            document.getElementById('modalCustomInputArea').classList.add('hidden');
+
+            document.getElementById('modalButtonArea').innerHTML = `
+                <button onclick="closeModal()" class="flex-1 py-2.5 bg-gray-300 text-gray-700 font-jua text-sm rounded-md">취소</button>
+                <button onclick="executeResetAllData()" class="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-jua text-sm rounded-md shadow-sm transition-all">네, 초기화합니다</button>
+            `;
+
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function executeResetAllData() {
+            localStorage.removeItem('pocketMoneyTeenDataV1');
+            
+            appData = {
+                transactions: [],
+                stickers: 0,
+                todayStickers: 0,
+                lastDate: new Date().toDateString(),
+                couponText: '보상 쿠폰',
+                isCouponActive: false,
+                missions: [
+                    { id: 1, name: '설거지 도와주기' },
+                    { id: 2, name: '신발 정돈하기' },
+                    { id: 3, name: '내 방 깔끔하게 청소하기' }
+                ],
+                weeklySubjects: [
+                    { id: 'math', name: '수학 3장' },
+                    { id: 'kor', name: '국어 3장' }
+                ],
+                weeklyMissions: {}
+            };
+
+            saveData();
+            renderAll();
+            closeModal();
+
+            setTimeout(() => {
+                showCustomModal('초기화 완료', '모든 기록이 깨끗하게 초기화되었습니다.');
+            }, 100);
+        }
+
+        // 백업 & 복원
+        function downloadBackup() {
+            const ymStr = new Date().toISOString().slice(0, 10);
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `용돈기록_${ymStr}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && typeof parsed === 'object') {
+                        appData = parsed;
+                        saveData();
+                        renderAll();
+                        showCustomModal('복원 성공', '백업 데이터를 성공적으로 불러왔습니다!');
+                    } else {
+                        showCustomModal('오류', '올바른 백업 파일 형식이 아닙니다.');
+                    }
+                } catch (err) {
+                    showCustomModal('오류', '파일을 읽는 도중 오류가 발생했습니다.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // RENDER FUNCTIONS
+        // ================= 요일별 할 일 (학원숙제·과제) =================
+        const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        const DAY_LABELS = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일' };
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // 오늘 요일 키 (일요일=0 → 'sun')
+        function getTodayDayKey() {
+            return ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+        }
+
+        function addDayTask() {
+            const day = document.getElementById('dayTaskDay').value;
+            const type = document.getElementById('dayTaskType').value;
+            const input = document.getElementById('dayTaskText');
+            const text = input.value.trim();
+            if (!text) {
+                showCustomModal('입력 확인', '할 일 내용을 입력해 주세요.');
+                return;
+            }
+            if (!Array.isArray(appData.dayTasks)) appData.dayTasks = [];
+            appData.dayTasks.push({ id: Date.now(), day, type, text });
+            input.value = '';
+            saveData();
+            renderDayTasks();
+            renderWeeklyMissions();
+        }
+
+        // 주차 카드 안에서 요일별 과제 체크 (주차마다 따로 저장 → 지난 주 기록도 남음)
+        function toggleCardDayTask(cardId, taskId) {
+            const ymKey = getYearMonthKey(currentYear, currentMonth);
+            const card = ((appData.weeklyMissions || {})[ymKey] || []).find(c => String(c.id) === String(cardId));
+            if (!card) return;
+            if (!card.dayTaskDone || typeof card.dayTaskDone !== 'object') card.dayTaskDone = {};
+            card.dayTaskDone[taskId] = !card.dayTaskDone[taskId];
+            saveData();
+            renderWeeklyMissions();
+        }
+
+        function deleteDayTask(id) {
+            if (!confirm('이 과제를 삭제할까요?\n모든 주차 카드에서 함께 빠집니다.')) return;
+            appData.dayTasks = (appData.dayTasks || []).filter(t => t.id !== id);
+            saveData();
+            renderDayTasks();
+            renderWeeklyMissions();
+        }
+
+        function getCardDayTaskSummary(card) {
+            const tasks = Array.isArray(appData.dayTasks) ? appData.dayTasks : [];
+            if (tasks.length === 0) return '';
+            const done = card.dayTaskDone || {};
+            const doneCount = tasks.filter(t => done[t.id]).length;
+            const all = doneCount === tasks.length;
+            return `<span class="text-[10px] font-bold px-2 py-0.5 rounded ${all ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}">과제 ${doneCount} / ${tasks.length}</span>`;
+        }
+
+        function renderCardDayTasks(card) {
+            const tasks = Array.isArray(appData.dayTasks) ? appData.dayTasks : [];
+            if (tasks.length === 0) return '';
+            const done = card.dayTaskDone || {};
+            let out = `
+                <div class="pt-2 mt-1 border-t border-slate-100 space-y-1.5">
+                    <div class="font-jua text-xs text-slate-700">요일별 과제</div>
+            `;
+            DAY_KEYS.forEach(day => {
+                const dayTasks = tasks.filter(t => t.day === day);
+                if (dayTasks.length === 0) return;
+                out += `<div class="flex gap-2 items-start">
+                            <span class="font-jua text-[11px] text-slate-500 w-4 pt-1.5 shrink-0">${DAY_LABELS[day]}</span>
+                            <div class="flex-1 space-y-1">`;
+                dayTasks.forEach(t => {
+                    const isDone = !!done[t.id];
+                    const badge = t.type === '학원숙제' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700';
+                    out += `
+                        <button type="button" onclick="toggleCardDayTask('${card.id}', ${t.id})"
+                                class="w-full flex items-center gap-2 px-2 py-1.5 rounded border text-left ${isDone ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-white'}">
+                            <span class="w-4 h-4 shrink-0 rounded border flex items-center justify-center text-[10px] font-bold ${isDone ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 text-transparent'}">✓</span>
+                            <span class="text-[9px] px-1 py-0.5 rounded ${badge} font-bold shrink-0">${escapeHtml(t.type)}</span>
+                            <span class="flex-1 text-[11px] font-medium ${isDone ? 'line-through text-gray-400' : 'text-slate-800'}">${escapeHtml(t.text)}</span>
+                        </button>`;
+                });
+                out += `</div></div>`;
+            });
+            out += `</div>`;
+            return out;
+        }
+
+        // 상단 '요일별 과제' = 등록·관리용 목록 (체크는 주차 카드에서)
+        function renderDayTasks() {
+            const list = document.getElementById('dayTaskList');
+            if (!list) return;
+            const tasks = Array.isArray(appData.dayTasks) ? appData.dayTasks : [];
+            const today = getTodayDayKey();
+
+            if (tasks.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">요일을 고르고 과제를 추가해 보세요.</p>';
+                return;
+            }
+
+            let html = '';
+            DAY_KEYS.forEach(day => {
+                const dayTasks = tasks.filter(t => t.day === day);
+                if (dayTasks.length === 0) return;
+                const isToday = day === today;
+                html += `
+                    <div class="rounded-md border ${isToday ? 'border-blue-500' : 'border-slate-200'} overflow-hidden">
+                        <div class="flex justify-between items-center px-3 py-1.5 ${isToday ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-700'}">
+                            <span class="font-jua text-xs">${DAY_LABELS[day]}요일${isToday ? ' · 오늘' : ''}</span>
+                            <span class="text-[10px] font-medium">${dayTasks.length}개</span>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                `;
+                dayTasks.forEach(t => {
+                    const badge = t.type === '학원숙제' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700';
+                    html += `
+                        <div class="flex items-center gap-2 px-3 py-2 bg-white">
+                            <span class="text-[10px] px-1.5 py-0.5 rounded ${badge} font-bold shrink-0">${escapeHtml(t.type)}</span>
+                            <span class="flex-1 text-xs font-medium text-slate-800">${escapeHtml(t.text)}</span>
+                            <button onclick="deleteDayTask(${t.id})" class="text-[11px] text-red-500 font-medium shrink-0">삭제</button>
+                        </div>
+                    `;
+                });
+                html += '</div></div>';
+            });
+            list.innerHTML = html;
+        }
+
+        function renderAll() {
+            document.getElementById('currentYearMonthDisplay').innerText = `${currentYear}년 ${currentMonth}월`;
+            populateDaySelector();
+            renderLedger();
+            renderStickers();
+            renderMissions();
+            renderWeeklyMissions();
+            renderDayTasks();
+        }
+
+        function renderLedger() {
+            const ymKey = getYearMonthKey(currentYear, currentMonth);
+            const currentMonthTxs = appData.transactions.filter(t => t.yearMonth === ymKey);
+            
+            const sortedAsc = [...currentMonthTxs].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            let runningBalance = 0;
+            const txsWithBalance = sortedAsc.map(tx => {
+                if (tx.type === 'income') runningBalance += tx.amount;
+                else runningBalance -= tx.amount;
+                return { ...tx, balanceAfter: runningBalance };
+            });
+
+            document.getElementById('totalBalance').innerText = `${runningBalance.toLocaleString()}원`;
+
+            const sortedDesc = [...txsWithBalance].reverse();
+            const tbody = document.getElementById('transTableBody');
+
+            if (sortedDesc.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-gray-400">이번 달 기록된 내역이 없어요</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            sortedDesc.forEach(tx => {
+                // 날짜에서 YYYY-MM-DD 중 'MM-DD' 또는 'M월 D일' 형태로 변환 (월과 일만 표시)
+                let dateShort = '';
+                if (tx.date) {
+                    const parts = tx.date.split('-');
+                    if (parts.length === 3) {
+                        dateShort = `${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일`;
+                    } else {
+                        dateShort = tx.date;
+                    }
+                }
+                const isIncome = tx.type === 'income';
+                html += `
+                    <tr class="hover:bg-slate-50/50">
+                        <td class="py-2 px-1 text-[11px] text-gray-500">${dateShort}</td>
+                        <td class="py-2 px-1 font-jua ${isIncome ? 'text-emerald-600' : 'text-red-500'}">${isIncome ? '수입' : '지출'}</td>
+                        <td class="py-2 px-1 text-gray-800 font-medium truncate max-w-[70px]">${tx.name}</td>
+                        <td class="py-2 px-1 font-bold ${isIncome ? 'text-emerald-600' : 'text-red-600'}">${isIncome ? '+' : '-'}${tx.amount.toLocaleString()}</td>
+                        <td class="py-2 px-1 font-jua text-gray-700">${tx.balanceAfter.toLocaleString()}</td>
+                        <td class="py-2 px-1 space-x-0.5">
+                            <button onclick="editTransaction(${tx.id})" class="text-slate-500 hover:text-slate-900 text-[10px] font-medium">수정</button>
+                            <button onclick="deleteTransaction(${tx.id})" class="text-red-500 hover:text-red-700 text-[10px] font-medium">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function renderStickers() {
+            document.getElementById('todayStickerCount').innerText = `${appData.todayStickers || 0}개`;
+            document.getElementById('totalStickerCount').innerText = appData.stickers || 0;
+
+            const board = document.getElementById('stickerBoard');
+            let boardHTML = '';
+            for (let i = 0; i < 10; i++) {
+                if (i < appData.stickers) {
+                    boardHTML += `<div class="aspect-square bg-blue-600 border border-blue-600 rounded-md flex items-center justify-center text-lg text-white font-bold">✓</div>`;
+                } else {
+                    boardHTML += `<div class="aspect-square bg-white border border-dashed border-slate-200 rounded-md flex items-center justify-center text-xs text-slate-300 font-jua">${i+1}</div>`;
+                }
+            }
+            board.innerHTML = boardHTML;
+
+            const couponContainer = document.getElementById('couponCardContainer');
+            // 보상 쿠폰 활성화 조건: isCouponActive가 true인 경우 (포인트 10개 완주 시 또는 부모님이 보상 저장 시)
+            if (appData.isCouponActive) {
+                couponContainer.classList.remove('hidden');
+                document.getElementById('displayCouponText').innerText = appData.couponText;
+            } else {
+                couponContainer.classList.add('hidden');
+            }
+        }
+
+        function renderMissions() {
+            const list = document.getElementById('missionList');
+            if (!appData.missions || appData.missions.length === 0) {
+                list.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">등록된 미션이 없습니다.</p>`;
+                return;
+            }
+
+            let html = '';
+            appData.missions.forEach(m => {
+                html += `
+                    <div class="flex items-center justify-between p-2 bg-slate-50 rounded-md border border-slate-200">
+                        <span class="text-xs font-bold text-gray-700">${m.name}</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="awardSticker('${m.name}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-jua text-xs rounded-lg shadow-sm">
+                                포인트 주기
+                            </button>
+                            <button onclick="editMission(${m.id})" class="text-[11px] text-slate-500 p-1 font-medium">수정</button>
+                            <button onclick="deleteMission(${m.id})" class="text-[11px] text-red-500 p-1 font-medium">삭제</button>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function renderWeeklyMissions() {
+            // Render subject tags
+            const subContainer = document.getElementById('subjectListContainer');
+            if (subContainer) {
+                let subHtml = '';
+                (appData.weeklySubjects || []).forEach(sub => {
+                    subHtml += `
+                        <span class="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1 rounded-md text-xs">
+                            ${sub.name}
+                            <button type="button" onclick="deleteCustomSubject(event, '${sub.id}')" class="text-red-500 hover:text-red-700 font-extrabold ml-1 px-1.5 py-0.5 rounded-md hover:bg-red-50 active:scale-90 transition-all cursor-pointer">✕</button>
+                        </span>
+                    `;
+                });
+                subContainer.innerHTML = subHtml || '<span class="text-xs text-gray-400">등록된 과목이 없습니다.</span>';
+            }
+
+            // Render Weekly Cards
+            const container = document.getElementById('weeklyMissionListContainer');
+            const ymKey = getYearMonthKey(currentYear, currentMonth);
+            const cardList = (appData.weeklyMissions && appData.weeklyMissions[ymKey]) || [];
+
+            if (cardList.length === 0) {
+                container.innerHTML = `<div class="bg-white p-6 rounded-lg border border-slate-200 text-center text-xs text-gray-400">이번 달 등록된 주간 학습 미션이 없습니다. 상단 <strong>+ 주차 추가</strong> 버튼을 눌러보세요!</div>`;
+                return;
+            }
+
+            const dayNames = { mon: '월', tue: '화', wed: '수', thu: '목', fri: '금' };
+            const subjects = appData.weeklySubjects || [];
+
+            let html = '';
+            cardList.forEach(card => {
+                html += `
+                    <div class="bg-white p-3.5 rounded-lg shadow-sm border border-slate-200 space-y-2">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <h3 class="font-jua text-sm text-slate-900">${card.weekTitle} 미션</h3>
+                            ${getCardDayTaskSummary(card)}
+                        </div>
+                        <div class="grid grid-cols-5 gap-1 text-center">
+                `;
+
+                ['mon', 'tue', 'wed', 'thu', 'fri'].forEach(d => {
+                    html += `
+                        <div class="bg-slate-50 p-1 rounded-md border border-slate-200 space-y-1.5">
+                            <div class="font-jua text-xs text-slate-800">${dayNames[d]}</div>
+                    `;
+
+                    if (subjects.length === 0) {
+                        html += `<div class="text-[9px] text-gray-400 py-2">과목없음</div>`;
+                    } else {
+                        subjects.forEach(s => {
+                            const taskData = card.days && card.days[d] && card.days[d][s.id];
+                            const isDone = typeof taskData === 'object' ? taskData.done : !!taskData;
+                            const pageText = (typeof taskData === 'object' && taskData.pages) ? taskData.pages : '';
+
+                            html += `
+                                <div class="bg-white p-1 rounded-lg border ${isDone ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200'} space-y-1 shadow-2xs">
+                                    <div class="flex items-center justify-between text-[9px] font-bold text-gray-700 px-0.5">
+                                        <span class="truncate">${s.name}</span>
+                                        ${isDone ? '<span class="text-emerald-500 font-extrabold text-[10px]">✓</span>' : ''}
+                                    </div>
+                                    <input type="text" 
+                                           value="${pageText}" 
+                                           placeholder="쪽수 입력" 
+                                           onchange="updateWeeklyPageInput('${card.id}', '${d}', '${s.id}', this.value)"
+                                           class="w-full text-[9px] p-1 border border-slate-200 rounded focus:outline-none focus:border-blue-500 bg-white/90 text-center text-gray-700 font-medium">
+                                </div>
+                            `;
+                        });
+                    }
+
+                    html += `</div>`;
+                });
+
+                html += `</div>`;              // 월~금 칸 끝
+                html += renderCardDayTasks(card); // 요일별 과제 (주차마다 따로 체크)
+                html += `</div>`;              // 카드 끝
+            });
+
+            container.innerHTML = html;
+        }
+
+        window.onload = loadData;
+        // 요일 선택 기본값을 오늘 요일로
+        window.addEventListener('load', () => {
+            const daySel = document.getElementById('dayTaskDay');
+            if (daySel) daySel.value = getTodayDayKey();
+        });
+
+        // ===== PWA: 서비스워커 등록 (오프라인 실행 + 설치 가능하게) =====
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('[PWA] 서비스워커 등록 완료:', reg.scope))
+                    .catch(err => console.warn('[PWA] 서비스워커 등록 실패:', err));
+            });
+        }
+        // 휴대폰이 저장공간 정리할 때 기록이 지워지지 않도록 '보존' 요청
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().catch(() => {});
+        }
+    </script>
+</body>
+</html>
